@@ -3,6 +3,7 @@ from tkinter import ttk, filedialog, messagebox
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.widgets import RectangleSelector
 import pandas as pd
 
 class VibrationAnalyzerApp:
@@ -34,6 +35,8 @@ class VibrationAnalyzerApp:
         self.select_button = ttk.Button(self.master, text="Select Part", command=self.select_part)
         self.select_button.pack()
 
+        self.rectSelectors = []
+
     def load_csv(self, idx):
         file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
         if file_path:
@@ -51,27 +54,28 @@ class VibrationAnalyzerApp:
 
     def select_part(self):
         try:
-            for ax in self.ax:
-                ax.set_xlim(auto=True)
-                ax.set_ylim(auto=True)
-                ax.patches.clear()
-
-            self.canvas.draw()
+            for rs in self.rectSelectors:
+                rs.set_active(False)
 
             messagebox.showinfo("Select Part", "Select the part by clicking and dragging on the graph.")
 
-            def onselect(eclick, erelease):
-                x0, y0 = eclick.xdata, eclick.ydata
-                x1, y1 = erelease.xdata, erelease.ydata
+            for ax in self.ax:
+                rs = RectangleSelector(ax, self.onselect, drawtype='box', useblit=True, button=[1], 
+                                       minspanx=5, minspany=5, spancoords='pixels', interactive=True)
+                self.rectSelectors.append(rs)
 
-                for ax in self.ax:
-                    rect = ax.add_patch(plt.Rectangle((min(x0, x1), min(y0, y1)), abs(x1 - x0), abs(y1 - y0),
-                                                      facecolor='yellow', alpha=0.5))
-                self.canvas.draw()
-
-            self.fig.canvas.mpl_connect('button_press_event', onselect)
         except Exception as e:
             messagebox.showerror("Error", str(e))
+
+    def onselect(self, eclick, erelease):
+        xmin, xmax = eclick.xdata, erelease.xdata
+        ymin, ymax = eclick.ydata, erelease.ydata
+
+        for ax in self.ax:
+            ax.set_xlim(xmin, xmax)
+            ax.set_ylim(ymin, ymax)
+
+        self.canvas.draw()
 
 def main():
     root = tk.Tk()
